@@ -1,0 +1,108 @@
+# 💰 Managing Session Costs
+
+Session length is the primary cost driver when running Claude agents. Understanding how costs compound — and how to control them — is the difference between a $15/month setup and a $150/week surprise.
+
+---
+
+## How costs accumulate
+
+Every model turn sends the full conversation history as context. As a session grows, each turn costs more than the last because you're paying for all previous turns again.
+
+A session with 100 turns is not 100x the cost of 1 turn — it's more like 5,000x, because turn 100 sends all 99 previous turns as context.
+
+**Real example:**
+A single Heidi session running continuously for 6 days accumulated:
+- 616 model turns
+- 1,846 messages
+- $153 in costs
+
+The same workload with daily resets: $5–15/session.
+
+---
+
+## The Frank Pattern — Nightly Reset
+
+The most effective cost control is a nightly session reset. Here's how it works:
+
+1. **Frank runs at 3 AM** (ops agent, scheduled via cron or automation)
+2. **Reads the primary agent's workspace** — MEMORY.md, today's daily notes, SYSTEMS.md
+3. **Distills to essential context** — 500–1,000 tokens covering what the agent needs to resume
+4. **Starts a fresh session** with that distilled context injected as the system prompt
+5. **Old session ends** — context resets, costs reset
+
+The key insight: **the transcript is not your memory. The files are.**
+
+Your agent does not lose continuity when the session resets. It loses dead weight.
+
+---
+
+## What to inject at session start
+
+Not everything needs to come back. A lean startup context includes:
+
+**Always inject:**
+- AGENTS.md (security rules and hierarchy)
+- SOUL.md (identity and values)
+- USER.md (who they are serving)
+- MEMORY.md summary (recent events, ongoing situations)
+- TOOLS.md (resource IDs and endpoints)
+
+**Inject if relevant today:**
+- Today's date and day of week
+- Upcoming events in the next 48 hours
+- Any open action items from yesterday
+
+**Do not inject:**
+- Full conversation transcripts
+- Old daily notes beyond the last 2–3 days
+- Resolved situations
+
+---
+
+## Cost benchmarks
+
+| Session pattern | Est. daily cost | Est. monthly cost |
+|----------------|----------------|-------------------|
+| Daily reset, moderate use | $0.50–1.50 | $15–45 |
+| Every 3–4 day reset | $2–5 per session | $20–50 |
+| No reset, continuous | $10–25/day | $300–750 |
+
+These are estimates based on Claude Sonnet pricing. Costs vary by model and usage patterns.
+
+---
+
+## Setting up a nightly reset
+
+The simplest implementation uses a cron job or automation platform (Make.com, Zapier, n8n) to:
+
+1. Trigger at a set time (3 AM works well — quiet period, ready for morning)
+2. Read the workspace files you want to inject
+3. Start a new Claude API session with those files as the system prompt
+4. Send a startup message ("Good morning, Heidi. Please read your workspace and confirm you are ready.")
+5. Log the session ID for monitoring
+
+If you are using Claude Code, you can script this directly. If you are using claude.ai, you will need to do this manually — paste the startup context at the beginning of each new conversation.
+
+---
+
+## Signs your sessions need better management
+
+- Your morning brief is slow to generate
+- The agent seems confused about recent events
+- Your API costs are climbing week over week
+- The agent references things from days ago as if they just happened
+
+All of these are symptoms of sessions that have grown too long.
+
+---
+
+## Manual reset (no Frank agent)
+
+If you are not running an ops agent yet, you can reset manually:
+
+1. At the end of each day, ask your agent: "Please update MEMORY.md with today's key events and any open items."
+2. Start a new session the next morning
+3. Paste your core files (AGENTS.md, SOUL.md, USER.md, MEMORY.md, TOOLS.md) as the opening context
+4. Continue
+
+This is more work but achieves the same result. Once you are comfortable with the system, automating it with a Frank-style agent is worth the setup time.
