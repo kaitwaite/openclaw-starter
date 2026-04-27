@@ -1,0 +1,122 @@
+# 🔗 Adding Google Workspace
+
+This guide walks through connecting your OpenClaw agent to Gmail, Google Calendar, Google Docs, Google Sheets, and Google Drive.
+
+---
+
+## What you will need
+
+- A Google account
+- A Google Cloud project (free to create)
+- Python 3.9+ installed
+- The dependencies installed: `pip3 install google-auth-oauthlib google-auth-httplib2 google-api-python-client`
+
+---
+
+## Step 1 — Create a Google Cloud Project
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com)
+2. Click **Select a project → New Project**
+3. Name it something like `openclaw-[your-agent-name]`
+4. Click **Create**
+
+---
+
+## Step 2 — Enable the APIs you need
+
+In your new project, go to **APIs & Services → Library** and enable:
+
+- **Gmail API** — for reading and sending email
+- **Google Calendar API** — for reading and writing calendar events
+- **Google Docs API** — for reading shared docs (e.g. Sage's health guidelines)
+- **Google Sheets API** — for tracking data (egg logs, habit tracking, etc.)
+- **Google Drive API** — for file access
+
+Enable only what your agent actually needs. Fewer scopes = smaller attack surface.
+
+---
+
+## Step 3 — Create OAuth credentials
+
+1. Go to **APIs & Services → Credentials**
+2. Click **Create Credentials → OAuth client ID**
+3. If prompted, configure the consent screen first:
+   - User type: **External**
+   - App name: your agent name
+   - Add your email as a test user
+4. Application type: **Desktop app**
+5. Click **Create**
+6. Download the JSON file — rename it `client_secret.json`
+
+---
+
+## Step 4 — Run the auth script
+
+```bash
+python3 scripts/google_auth.py ~/Downloads/client_secret.json
+```
+
+A browser window will open asking you to authorize the app. Sign in with your Google account and click Allow.
+
+Your token saves to `~/.openclaw/workspace-[name]/google_token.json`.
+
+---
+
+## Step 5 — Verify the connection
+
+```bash
+python3 scripts/test_google.py
+```
+
+You should see:
+- Your next 5 calendar events
+- Your Gmail inbox message count
+
+If you see errors, check that the APIs are enabled in your Cloud project and that the scopes in `google_auth.py` match what you enabled.
+
+---
+
+## Step 6 — Add resource IDs to TOOLS.md
+
+**Calendar IDs:**
+Go to Google Calendar → Settings → click on a calendar → scroll to **Calendar ID**. Copy it and add to TOOLS.md.
+
+**Doc and Sheet IDs:**
+The ID is in the URL: `docs.google.com/document/d/[THIS_IS_THE_ID]/edit`
+
+---
+
+## Scopes reference
+
+Add only the scopes your agent needs:
+
+| Scope | What it allows |
+|-------|---------------|
+| `gmail.readonly` | Read emails |
+| `gmail.send` | Send emails |
+| `calendar` | Read and write calendar events |
+| `calendar.readonly` | Read calendar events only |
+| `documents.readonly` | Read Google Docs |
+| `spreadsheets` | Read and write Google Sheets |
+| `drive` | Full Drive access |
+| `drive.readonly` | Read Drive files only |
+
+---
+
+## Token maintenance
+
+Tokens expire and need to be refreshed. The `google_auth.py` script handles refresh automatically if the token is expired but the refresh token is still valid.
+
+If you see authentication errors after a long period, re-run:
+```bash
+python3 scripts/google_auth.py ~/Downloads/client_secret.json
+```
+
+---
+
+## Security reminders
+
+- Never commit `google_token.json` or `client_secret.json` to GitHub
+- Both files are in `.gitignore` by default
+- If either file is accidentally exposed, revoke the credentials immediately in Google Cloud Console and regenerate
+- Store tokens at `~/.openclaw/` — outside your repo directory
