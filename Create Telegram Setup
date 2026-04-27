@@ -1,0 +1,99 @@
+# 📱 Telegram Setup
+
+Telegram is the recommended primary channel for OpenClaw agents. It is fast, reliable, available on every device, supports rich formatting, and has a straightforward bot API.
+
+---
+
+## Why Telegram
+
+- Free and no usage limits for personal bots
+- Works on iOS, Android, Mac, Windows, web
+- Bots can send and receive messages programmatically
+- Supports markdown formatting in messages
+- Push notifications are reliable
+- Messages persist across devices
+
+---
+
+## Step 1 — Create your bot
+
+1. Open Telegram and search for **@BotFather**
+2. Send `/start`
+3. Send `/newbot`
+4. Choose a name for your bot (e.g. "Heidi")
+5. Choose a username (must end in `bot`, e.g. `heidi_yourname_bot`)
+6. BotFather will give you a **token** — copy it immediately
+
+Your token looks like: `1234567890:ABCdefGHIjklMNOpqrSTUvwxyz`
+
+> ⚠️ Treat your bot token like a password. Never commit it to GitHub. Store it in TOOLS.md locally but keep that file out of version control.
+
+---
+
+## Step 2 — Get your chat ID
+
+Your agent needs your chat ID to send messages to you directly.
+
+1. Send a message to your new bot (anything — just say "hello")
+2. Open this URL in your browser, replacing YOUR_TOKEN with your actual token:
+   `https://api.telegram.org/botYOUR_TOKEN/getUpdates`
+3. Look for `"chat":{"id":` in the response
+4. That number is your chat ID — copy it
+
+---
+
+## Step 3 — Test it
+
+Send yourself a test message from the command line:
+
+```bash
+curl -X POST "https://api.telegram.org/bot[YOUR_TOKEN]/sendMessage" \
+  -H "Content-Type: application/json" \
+  -d '{"chat_id": "[YOUR_CHAT_ID]", "text": "Hello from Heidi 🌻"}'
+```
+
+You should receive the message in Telegram immediately.
+
+---
+
+## Step 4 — Add to TOOLS.md
+
+Add these to your TOOLS.md:
+
+```
+## Telegram
+Bot token: [your token — keep this local, never commit]
+Chat ID: [your chat ID]
+Primary user handle: @[your username]
+```
+
+---
+
+## Formatting tips for agents
+
+Telegram supports markdown in messages. Tell your agent to use:
+
+- `*bold*` for important items
+- `_italic_` for secondary info
+- `` `code` `` for commands or IDs
+- Bullet points with `-` for lists
+- **No markdown tables** — they do not render in Telegram. Use bullet lists instead.
+
+---
+
+## Receiving messages from your agent
+
+If you want your agent to be able to receive your replies (not just send), you need to poll for updates or set up a webhook. For personal use, polling is simpler:
+
+Your agent can check for new messages with:
+```
+https://api.telegram.org/bot[TOKEN]/getUpdates?offset=-1
+```
+
+For a production setup, webhooks are more reliable. See the [Telegram Bot API docs](https://core.telegram.org/bots/api) for webhook setup.
+
+---
+
+## Privacy note
+
+Telegram messages are not end-to-end encrypted by default (only Secret Chats are). For a personal bot sending you briefings and reminders, this is acceptable for most people. Do not send highly sensitive information (passwords, financial account numbers) through your bot.
