@@ -1,0 +1,137 @@
+# 🤝 Multi-Agent Setup
+
+How to run multiple OpenClaw agents on a single gateway — and how to wire them up to coordinate with each other.
+
+---
+
+## When to add a second agent
+
+Add a new agent when:
+- A domain is complex enough to deserve its own identity and procedures
+- You want to separate concerns cleanly (health vs. home ops vs. finances)
+- A task runs on a different schedule than your primary agent
+- You want one agent's output to feed another's input
+
+Do not add a new agent just because you have more tasks. Start with one agent and extend it until the complexity genuinely justifies a split.
+
+---
+
+## The single gateway model
+
+A gateway is how agents hand off state. OpenClaw uses a file-based gateway — agents write outputs to files or Google Docs, and other agents read them on their next session.
+
+```
+Sage (Saturday EOD)
+  └─► writes health guidelines → Google Doc
+
+Heidi (Sunday morning)
+  └─► reads Google Doc
+  └─► builds meal plan
+  └─► posts to Telegram
+
+Frank (3 AM nightly)
+  └─► reads Heidi workspace files
+  └─► distills context
+  └─► starts fresh Heidi session
+```
+
+No agent talks directly to another agent in real time. They communicate through shared state. This is simpler, cheaper, and more reliable than real-time agent-to-agent communication.
+
+---
+
+## Setting up the Frank pattern (ops agent)
+
+Frank is the simplest multi-agent addition and delivers the most immediate value — primarily through cost control.
+
+### Frank's workspace
+Frank needs a minimal workspace:
+
+```
+~/.openclaw/workspace-frank/
+├── AGENTS.md    # Security rules
+├── SOUL.md      # Frank's identity (operational, terse)
+└── TOOLS.md     # Paths to other agents' workspaces
+```
+
+### Frank's SOUL.md (example)
+```
+Frank is an operations agent. His job is to reset Heidi's session nightly
+and re-inject only the context she needs to resume. He is terse, efficient,
+and has no user-facing role. He does not communicate with Kate directly.
+He does not have email or send capabilities.
+```
+
+### Frank's nightly procedure
+1. Read Heidi's MEMORY.md
+2. Read Heidi's most recent daily note (memory/YYYY-MM-DD.md)
+3. Read Heidi's HEARTBEAT.md for any pending triggers
+4. Compose a startup context: date, key memory items, open items, pending events
+5. Start a new Heidi session with that context as the opening message
+6. Confirm Heidi is ready
+7. Log completion
+
+### Automating Frank
+Use a cron job, Make.com scenario, or any automation platform that can trigger at 3 AM and make API calls.
+
+Basic cron setup (runs at 3 AM daily):
+```
+0 3 * * * /usr/local/bin/python3 /path/to/frank_reset.py
+```
+
+---
+
+## Setting up a specialist agent (Sage pattern)
+
+A specialist agent owns a domain, runs on a schedule, and writes its output to a shared location for the primary agent to pick up.
+
+### Sage's setup
+1. Create `~/.openclaw/workspace-sage/` with full template files
+2. Define Sage's domain tightly in SOUL.md (health and nutrition only)
+3. Set Sage's trigger in HEARTBEAT.md (Saturday EOD)
+4. Create a shared Google Doc — this is the handoff point
+5. Add the Google Doc ID to both Sage's TOOLS.md and Heidi's TOOLS.md
+6. Add a read step to Heidi's SYSTEMS.md: "On Sunday, read Sage's health doc before meal planning"
+
+### The handoff
+Sage writes to the shared doc. Heidi reads from it. Neither agent needs to know the other exists beyond the shared doc ID.
+
+---
+
+## Naming and identity guidelines
+
+Each agent should have:
+- A distinct name and emoji
+- A clear, narrow role definition
+- No overlap with other agents' domains
+- Its own send passphrase (if it can send email)
+
+Avoid agents with overlapping responsibilities. If two agents could both handle a task, assign it clearly to one.
+
+---
+
+## Scaling beyond two agents
+
+The same pattern scales to as many agents as you need:
+
+- Each specialist writes to its own shared doc or file
+- The primary agent reads all relevant docs at session start
+- Frank resets the primary agent nightly with a summary of all relevant context
+- Each specialist runs on its own schedule with its own session
+
+The only thing that gets complex is Frank's context distillation — at some point you may need Frank to be smarter about what to include. A good heuristic: if something is in MEMORY.md, it is worth including. If it is only in a daily note older than 3 days, leave it out unless it is still active.
+
+---
+
+## Troubleshooting multi-agent setups
+
+**Primary agent does not see specialist output**
+Check that the Google Doc ID is correct in both TOOLS.md files. Check that the primary agent's SYSTEMS.md includes the read step.
+
+**Agents are duplicating work**
+Domain boundaries are unclear. Tighten each agent's SOUL.md to define exactly what it does and does not own.
+
+**Frank's reset is not working**
+Check the cron schedule, the API credentials, and the workspace file paths. Add logging to Frank's reset script to see where it fails.
+
+**Costs are still high after adding Frank**
+Frank may be injecting too much context. Aim for 500–1,000 tokens of startup context. If MEMORY.md is very long, have Frank summarize it rather than injecting it verbatim.
